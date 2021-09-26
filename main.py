@@ -109,6 +109,16 @@ def main():
     all_coins = get_all_coins()
     coin_seen_dict = generate_coin_seen_dict(all_coins)
 
+    # Poner este bloque de debajo sirve para ver si la API está devolviendo correctamente los mismos valores que la aplicación.
+    # Los valores que devuelve la aplicación se pueden ver en esta página filtrando por Fiat--> USDT 
+    # https://www.binance.com/es/markets          
+
+    # arrayComprobacionBinance = []
+    # for i in coin_seen_dict :
+    #     if i[-4:] == 'USDT'  :
+    #         print(i)
+    #         arrayComprobacionBinance.append(i)
+
     # this list will work as a queue, if a new updated all_coins is received it will be added to this queue
     queue_of_updated_all_coins = []
     # start a thread to run the make_threads_to_request_all_coins method
