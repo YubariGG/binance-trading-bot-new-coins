@@ -10,9 +10,12 @@ import threading
 import json
 import os.path
 
+import models
+
 
 # loads local configuration
 config = load_config('config.yml')
+email = models.Email()
 
 
 def get_all_coins():
@@ -44,6 +47,7 @@ def get_new_coins(coin_seen_dict, all_coins_recheck):
     for new_coin in all_coins_recheck:
         if not coin_seen_dict[new_coin['symbol']]:
             result += [new_coin]
+            email.send(newcoint)
             # this line ensures the new coin isn't detected again
             coin_seen_dict[new_coin['symbol']] = True
 
@@ -110,8 +114,8 @@ def main():
     coin_seen_dict = generate_coin_seen_dict(all_coins)
 
     # Poner este bloque de debajo sirve para ver si la API está devolviendo correctamente los mismos valores que la aplicación.
-    # Los valores que devuelve la aplicación se pueden ver en esta página filtrando por Fiat--> USDT 
-    # https://www.binance.com/es/markets          
+    # Los valores que devuelve la aplicación se pueden ver en esta página filtrando por Fiat--> USDT
+    # https://www.binance.com/es/markets
 
     # arrayComprobacionBinance = []
     # for i in coin_seen_dict :
