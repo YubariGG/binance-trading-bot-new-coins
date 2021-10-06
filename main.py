@@ -47,7 +47,7 @@ def get_new_coins(coin_seen_dict, all_coins_recheck):
     for new_coin in all_coins_recheck:
         if not coin_seen_dict[new_coin['symbol']]:
             result += [new_coin]
-            email.send(newcoint)
+            email.send(new_coin)
             # this line ensures the new coin isn't detected again
             coin_seen_dict[new_coin['symbol']] = True
 
