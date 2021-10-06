@@ -6,17 +6,13 @@ from collections import defaultdict
 from datetime import datetime, time
 import time
 import threading
-
 import json
 import os.path
-
 import models
-
 
 # loads local configuration
 config = load_config('config.yml')
 email = models.Email()
-
 
 def get_all_coins():
     """
@@ -47,7 +43,7 @@ def get_new_coins(coin_seen_dict, all_coins_recheck):
     for new_coin in all_coins_recheck:
         if not coin_seen_dict[new_coin['symbol']]:
             result += [new_coin]
-            email.send(new_coin)
+            email.send("<p>" + new_coin + " has been found by the bot.</p>", "NEW COIN FOUND!!!")
             # this line ensures the new coin isn't detected again
             coin_seen_dict[new_coin['symbol']] = True
 
@@ -175,7 +171,9 @@ def main():
                             # sell for real if test mode is set to false
                             if not test_mode:
                                 sell = create_order(coin, coin['volume'], 'SELL')
-
+                                precio_venta = (float(last_price) - stored_price) / float(stored_price)*100
+                                ## Notificar por email
+                                email.send("<p>Se ha vendido "+str(coin['volume']) +" de "+coin+" a un precio de "+str(precio_venta)+".</p>", "NUEVA VENTA EJECUTADA")
 
                             print(f"sold {coin} at {(float(last_price) - stored_price) / float(stored_price)*100}")
 
@@ -262,10 +260,14 @@ def main():
                                 order[coin['symbol']]['tp'] = tp
                                 order[coin['symbol']]['sl'] = sl
 
+                                ## Notificar por email
+                                email.send("<p>Se han comprado "+str(volume)+" de "+symbol_only+pairing+" a un precio de "+str(price)+".</p>", "NUEVA COMPRA EJECUTADA")
+
                         except Exception as e:
                             print(e)
 
                         else:
+
                             print(f"Order created with {volume} on {coin['symbol']}")
 
                             store_order('order.json', order)
