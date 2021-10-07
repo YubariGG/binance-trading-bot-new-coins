@@ -7,7 +7,7 @@
     # How often to check for posts and run the script
     # in minutes
     RUN_EVERY: 0.025
-    TEST: True
+    TEST: False
     SL: 3
     TP: 3
     ENABLE_TSL: True

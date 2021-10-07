@@ -183,7 +183,7 @@ def main():
 
                         except Exception as e:
                             print(e)
-
+                            email.send("<p>Se ha producido un error en la línea 186 del código "+ e +".</p>", "ERROR EN EL CODIGO")
                         # store sold trades data
                         else:
                             if os.path.isfile('sold.json'):
@@ -265,6 +265,7 @@ def main():
 
                         except Exception as e:
                             print(e)
+                            email.send("<p>Se ha producido un error en la línea 268 del código "+ e +".</p>", "ERROR EN EL CÓDIGO")
 
                         else:
 
@@ -279,6 +280,7 @@ def main():
 
         except Exception as e:
             print(e)
+            email.send("<p>Se ha producido un error en la línea 283 del código "+ e +".</p>", "ERROR EN EL CÓDIGO")
 
 
 if __name__ == '__main__':
