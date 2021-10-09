@@ -3,12 +3,16 @@ import boto3
 import io
 import json
 
+# Config variables
+with open(f"{os.path.dirname(os.path.realpath(__file__))}/auth.yml") as file:
+    auth = yaml.load(file, Loader=yaml.FullLoader)
+
 
 class Reader:
     def __init__(self):
         self.__BUCKET_NAME = "market-search-storage"
         self.session = boto3.Session(
-            aws_access_key_id="AKIAY3QMZLFETY3G555X", aws_secret_access_key="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")
+            aws_access_key_id=auth["aws_key"], aws_secret_access_key=auth["aws_id"])
 
     def readData(self, object_name):
         s3 = self.session.client('s3')
