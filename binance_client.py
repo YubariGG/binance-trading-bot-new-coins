@@ -56,11 +56,12 @@ class Binance:
             # Already existing coins
             if name in stored_coins.keys():
                 stored_coins, write_all = self.apply_threshold(
-                    stored_coins, coin)
+                    stored_coins, coin, write_all)
 
             # New coins
             elif name in new_coins.keys():
-                new_coins, write_new = self.apply_threshold(new_coins, coin)
+                new_coins, write_new = self.apply_threshold(
+                    new_coins, coin, stored_coins, coin, write_new)
             else:
                 body = f"<p>{name} was fond by the bot.</p>"
                 self.email.send(body, "NEW COIN FOUND")
@@ -80,7 +81,7 @@ class Binance:
         return {coin: stored_coins[coin] for coin in filtered_coins}
 
     # Features:
-    def apply_threshold(self, coin_list, coin):
+    def apply_threshold(self, coin_list, coin, write):
         name = coin["symbol"]
         price = float(coin["price"])
         last_price = float(coin_list[name][-1].split(",")[0])
