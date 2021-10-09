@@ -14,7 +14,7 @@ class Reader:
     def __init__(self):
         self.__BUCKET_NAME = "market-search-storage"
         self.session = boto3.Session(
-            aws_access_key_id=auth["aws_key"], aws_secret_access_key=auth["aws_id"])
+            aws_access_key_id=auth["aws_id"], aws_secret_access_key=auth["aws_key"])
 
     def readData(self, object_name):
         s3 = self.session.client('s3')
