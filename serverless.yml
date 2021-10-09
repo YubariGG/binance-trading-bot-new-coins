@@ -1,0 +1,16 @@
+service: market-search
+frameworkVersion: "2"
+
+provider:
+  name: aws
+  runtime: python3.8
+  lambdaHashingVersion: "20201221"
+  region: eu-central-1
+
+functions:
+  run:
+    handler: handler.run
+    events:
+      - httpApi:
+          path: /
+          method: get

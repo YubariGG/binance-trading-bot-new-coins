@@ -1,9 +1,34 @@
-# Ignore creds file
-auth/auth.yml
+# Folders
+__pycache__
+auth.yml
+aiohttp
+async_timeout
+attr
+backports
+bin
+binance
+certifi
+chardet
+charset_normalizer
+dateparser
+dateparser_cli
+dateparser_data
+dateparser_scripts
+dateutil
+idna
+multidict
+pytz
+regex
+requests
+tzlocal
+urllib3
+websockets
+yarl
+yaml
+_yaml
+.serverless
 
-# Ignore orders
-order.json
-sold.json
-
-# Ignore pycache
-__pycache__/
+# Scripts:
+six.py
+typing_extensions.py
+ujson.cpython-38-x86_64-linux-gnu.so

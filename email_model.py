@@ -3,18 +3,20 @@ import smtplib
 from email.message import EmailMessage
 from email.utils import make_msgid
 
+
 class Email():
     def __init__(self):
         self.__email = "idom.consultants@gmail.com"
-        self.__password = "bEQmxNMwVhWJS5c--KbSnKcybaU=" # Tengo que resetear esta mierda
-        self.__targets = ["jaime.hernandez@idom.com","iker.camacho@idom.com",  "jon.bilbao@idom.com", "jaimernandez.94@gmail.com"]
+        self.__password = "bEQmxNMwVhWJS5c--KbSnKcybaU="
+        self.__targets = ["jaime.hernandez@idom.com", "iker.camacho@idom.com",
+                          "jon.bilbao@idom.com", "jaimernandez.94@gmail.com"]
 
     def build_msg(self, subject, target_email, body):
         message = EmailMessage()
         message["Subject"] = subject
         message["From"] = self.__email
         message["To"] = target_email
-        message.set_content(body , subtype='html')
+        message.set_content(body, subtype='html')
         return message
 
     def server_connection(self, message):
@@ -25,7 +27,7 @@ class Email():
 
     def send(self, text, subject):
         for target in self.__targets:
-            subject = subject  
+            subject = subject
             body = text
             message = self.build_msg(subject, target, body)
             self.server_connection(message)
@@ -34,4 +36,5 @@ class Email():
 if __name__ == '__main__':
     email = Email()
     newCoin = "USD"
-    email.send("<p>"+newCoin +" has been found by the bot.</p>", "NEW COIN FOUND")
+    email.send("<p>"+newCoin + " has been found by the bot.</p>",
+               "NEW COIN FOUND")
