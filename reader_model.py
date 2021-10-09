@@ -2,6 +2,8 @@
 import boto3
 import io
 import json
+import os
+import yaml
 
 # Config variables
 with open(f"{os.path.dirname(os.path.realpath(__file__))}/auth.yml") as file:
