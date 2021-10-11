@@ -123,7 +123,8 @@ def main():
     #         print(i)
     #         arrayComprobacionBinance.append(i)
 
-    # this list will work as a queue, if a new updated all_coins is received it will be added to this queue
+    # this list will work as a queue, if a new updated all_coins is received it will be added to this queue hola
+
     queue_of_updated_all_coins = []
     # start a thread to run the make_threads_to_request_all_coins method
     threading.Thread(target=make_threads_to_request_all_coins,
