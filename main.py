@@ -14,6 +14,7 @@ import models
 config = load_config('config.yml')
 email = models.Email()
 
+
 def get_all_coins():
     """
     Returns all coins from Binance
@@ -43,7 +44,8 @@ def get_new_coins(coin_seen_dict, all_coins_recheck):
     for new_coin in all_coins_recheck:
         if not coin_seen_dict[new_coin['symbol']]:
             result += [new_coin]
-            email.send("<p>" + new_coin + " has been found by the bot.</p>", "NEW COIN FOUND!!!")
+            email.send("<p>" + new_coin +
+                       " has been found by the bot.</p>", "NEW COIN FOUND!!!")
             # this line ensures the new coin isn't detected again
             coin_seen_dict[new_coin['symbol']] = True
 
@@ -84,10 +86,12 @@ def make_threads_to_request_all_coins(queue, interval=0.1, max_amount_of_threads
             time.sleep(1)
         # checks if the queue isn't getting too big
         elif len(queue) > max_queue_length:
-            print("Queue length too big, waiting 1 second to attempt to create a new thread.")
+            print(
+                "Queue length too big, waiting 1 second to attempt to create a new thread.")
             time.sleep(1)
         else:
-            threading.Thread(target=add_updated_all_coins_to_queue, args=(queue,)).start()
+            threading.Thread(
+                target=add_updated_all_coins_to_queue, args=(queue,)).start()
 
 
 def main():
@@ -122,7 +126,8 @@ def main():
     # this list will work as a queue, if a new updated all_coins is received it will be added to this queue
     queue_of_updated_all_coins = []
     # start a thread to run the make_threads_to_request_all_coins method
-    threading.Thread(target=make_threads_to_request_all_coins, args=(queue_of_updated_all_coins,)).start()
+    threading.Thread(target=make_threads_to_request_all_coins,
+                     args=(queue_of_updated_all_coins,)).start()
     # this is just used to calculate the amount of time between getting updated all_coins
     t0 = time.time()
     while True:
@@ -138,44 +143,77 @@ def main():
                     # store some necesarry trade info for a sell
                     stored_price = float(order[coin]['price'])
                     coin_tp = order[coin]['tp']
-                    coin_sl = order[coin]['sl']
+                    # coin_sl = order[coin]['sl'] No se utiliza para nada
                     volume = order[coin]['volume']
                     symbol = coin.split(pairing)[0]
 
-
                     last_price = get_price(symbol, pairing)
 
+                    # Conditions:
+                    update_tp = float(
+                        last_price) > stored_price + (stored_price*coin_tp / 100)
+                    sell_sl = float(last_price) < stored_price - \
+                        (stored_price*sl / 100)
+                    sell_tp = float(last_price) > stored_price + \
+                        (stored_price*tp / 100)
+
                     # update stop loss and take profit values if threshold is reached
-                    if float(last_price) > stored_price + (stored_price*coin_tp /100) and enable_tsl:
+                    if update_tp and enable_tsl:
                         # increase as absolute value for TP
-                        new_tp = float(last_price) + (float(last_price)*ttp /100)
+                        new_tp = float(last_price) + \
+                            (float(last_price)*ttp / 100)
                         # convert back into % difference from when the coin was bought
-                        new_tp = float( (new_tp - stored_price) / stored_price*100)
+                        new_tp = float(
+                            (new_tp - stored_price) / stored_price*100)
 
                         # same deal as above, only applied to trailing SL
-                        new_sl = float(last_price) - (float(last_price)*tsl /100)
-                        new_sl = float((new_sl - stored_price) / stored_price*100)
+                        new_sl = float(last_price) - \
+                            (float(last_price)*tsl / 100)
+                        new_sl = float(
+                            (new_sl - stored_price) / stored_price*100)
 
                         # new values to be added to the json file
                         order[coin]['tp'] = new_tp
                         order[coin]['sl'] = new_sl
                         store_order('order.json', order)
 
-                        print(f'updated tp: {round(new_tp, 3)} and sl: {round(new_sl, 3)}')
+                        print(
+                            f'updated tp: {round(new_tp, 3)} and sl: {round(new_sl, 3)}')
 
                     # close trade if tsl is reached or trail option is not enabled
-                    elif float(last_price) < stored_price - (stored_price*sl /100) or float(last_price) > stored_price + (stored_price*tp /100) and not enable_tsl:
-
+                    elif sell_sl or (sell_tp and not enable_tsl):
                         try:
+                            # Save the selling trades:
+                            if os.path.isfile('sold.json'):
+                                sold_coins = load_order('sold.json')
+
+                            else:
+                                sold_coins = {}
 
                             # sell for real if test mode is set to false
                             if not test_mode:
-                                sell = create_order(coin, coin['volume'], 'SELL')
-                                precio_venta = (float(last_price) - stored_price) / float(stored_price)*100
-                                ## Notificar por email
-                                email.send("<p>Se ha vendido "+str(coin['volume']) +" de "+coin+" a un precio de "+str(precio_venta)+".</p>", "NUEVA VENTA EJECUTADA")
+                                sell = create_order(
+                                    coin, volume, 'SELL')
+                                margin = (
+                                    float(last_price) - stored_price) / float(stored_price)*100
+                                sold_coins[coin] = sell
+                                store_order('sold.json', sold_coins)
 
-                            print(f"sold {coin} at {(float(last_price) - stored_price) / float(stored_price)*100}")
+                                # Notificar por email
+                                body = f"<p>Se ha vendido {str(coin['volume'])} de {coin} a un precio de {last_price} con un margen del {margin}</p>"
+                                email.send(body, "NUEVA VENTA EJECUTADA")
+
+                            else:
+                                sold_coins[coin] = {
+                                    'symbol': coin,
+                                    'price': last_price,
+                                    'volume': volume,
+                                    'time': datetime.timestamp(datetime.now()),
+                                    'profit': float(last_price) - stored_price,
+                                    'relative_profit': round((float(last_price) - stored_price) / stored_price*100, 3)
+                                }
+
+                                store_order('sold.json', sold_coins)
 
                             # remove order from json file
                             order.pop(coin)
@@ -183,29 +221,8 @@ def main():
 
                         except Exception as e:
                             print(e)
-                            email.send("<p>Se ha producido un error en la línea 186 del código "+ e +".</p>", "ERROR EN EL CODIGO")
-                        # store sold trades data
-                        else:
-                            if os.path.isfile('sold.json'):
-                                sold_coins = load_order('sold.json')
-
-                            else:
-                                sold_coins = {}
-
-                            if not test_mode:
-                                sold_coins[coin] = sell
-                                store_order('sold.json', sold_coins)
-                            else:
-                                sold_coins[coin] = {
-                                            'symbol':coin,
-                                            'price':last_price,
-                                            'volume':volume,
-                                            'time':datetime.timestamp(datetime.now()),
-                                            'profit': float(last_price) - stored_price,
-                                            'relative_profit': round((float(last_price) - stored_price) / stored_price*100, 3)
-                                            }
-
-                                store_order('sold.json', sold_coins)
+                            email.send(
+                                "<p>Se ha producido un error en la línea 186 del código " + e + ".</p>", "ERROR EN EL CODIGO")
 
             else:
                 order = {}
@@ -218,8 +235,10 @@ def main():
                 new_coins = get_new_coins(coin_seen_dict, all_coins_updated)
 
                 print("time to get updated list of coins: ", time.time() - t0)
-                print("current amount of threads: ", len(threading.enumerate()))
-                print("current queue length: ", len(queue_of_updated_all_coins))
+                print("current amount of threads: ",
+                      len(threading.enumerate()))
+                print("current queue length: ", len(
+                    queue_of_updated_all_coins))
                 t0 = time.time()
             else:
                 # if no new all_coins_updated is on the queue, new_coins should be empty
@@ -244,43 +263,50 @@ def main():
                             # Run a test trade if true
                             if config['TRADE_OPTIONS']['TEST']:
                                 order[coin['symbol']] = {
-                                            'symbol':symbol_only+pairing,
-                                            'price':price,
-                                            'volume':volume,
-                                            'time':datetime.timestamp(datetime.now()),
-                                            'tp': tp,
-                                            'sl': sl
-                                            }
+                                    'symbol': symbol_only+pairing,
+                                    'price': price,
+                                    'volume': volume,
+                                    'time': datetime.timestamp(datetime.now()),
+                                    'tp': tp,
+                                    'sl': sl
+                                }
 
-                                print('PLACING TEST ORDER')
+                                # print('PLACING TEST ORDER')
 
                             # place a live order if False
                             else:
-                                order[coin['symbol']] = create_order(symbol_only+pairing, volume, 'BUY')
+                                order[coin['symbol']] = create_order(
+                                    symbol_only+pairing, volume, 'BUY')
                                 order[coin['symbol']]['tp'] = tp
                                 order[coin['symbol']]['sl'] = sl
 
-                                ## Notificar por email
-                                email.send("<p>Se han comprado "+str(volume)+" de "+symbol_only+pairing+" a un precio de "+str(price)+".</p>", "NUEVA COMPRA EJECUTADA")
+                                # Notificar por email
+                                body = f"<p>Se han comprado {volume} de {symbol_only+pairing} a un precio de {price}.</p>"
+                                email.send(body, "NUEVA COMPRA EJECUTADA")
+
+                                # print(
+                                #     f"Order created with {volume} on {coin['symbol']}")
+
+                                store_order('order.json', order)
 
                         except Exception as e:
-                            print(e)
-                            email.send("<p>Se ha producido un error en la línea 268 del código "+ e +".</p>", "ERROR EN EL CÓDIGO")
+                            # print(e)
+                            email.send(
+                                "<p>Se ha producido un error en la línea 268 del código " + e + ".</p>", "ERROR EN EL CÓDIGO")
 
-                        else:
-
-                            print(f"Order created with {volume} on {coin['symbol']}")
-
-                            store_order('order.json', order)
                     else:
-                        print(f"New coin detected, but {coin['symbol']} is currently in portfolio, or {pairing} does not match")
+                        print(
+                            f"New coin detected, but {coin['symbol']} is currently in portfolio, or {pairing} does not match")
+                        body = f"<p>New coin detected, but {coin['symbol']} is currently in portfolio, or {pairing} does not match</p>"
+                        email.send(body, "NEW COIN DETECTED but not bought")
 
             else:
                 pass
 
         except Exception as e:
-            print(e)
-            email.send("<p>Se ha producido un error en la línea 283 del código "+ e +".</p>", "ERROR EN EL CÓDIGO")
+            body = f"<p>No se ha ejecutado el bucle principal{e}</p>"
+            email.send(body,
+                       "ERROR EN EL CÓDIGO")
 
 
 if __name__ == '__main__':
