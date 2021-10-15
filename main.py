@@ -293,8 +293,8 @@ def main():
 
                         except Exception as e:
                             # print(e)
-                            email.send(
-                                "<p>Se ha producido una excepción en el bloque de compras " + e + ".</p>", "ERROR EN EL CÓDIGO")
+                            body = f"<p>Se ha producido una excepción en el bloque de compras <br> {e}.</p>"
+                            email.send(body, "ERROR EN EL CÓDIGO")
 
                     else:
                         # print(
