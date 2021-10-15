@@ -44,8 +44,7 @@ def get_new_coins(coin_seen_dict, all_coins_recheck):
     for new_coin in all_coins_recheck:
         if not coin_seen_dict[new_coin['symbol']]:
             result += [new_coin]
-            email.send("<p>" + new_coin +
-                       " has been found by the bot.</p>", "NEW COIN FOUND!!!")
+            
             # this line ensures the new coin isn't detected again
             coin_seen_dict[new_coin['symbol']] = True
 
@@ -82,12 +81,12 @@ def make_threads_to_request_all_coins(queue, interval=0.1, max_amount_of_threads
         time.sleep(interval)
         # checks if the amount of threads is bigger than max_amount_of_threads
         if len(threading.enumerate()) > max_amount_of_threads:
-            print("Too many threads, waiting 1 second to attempt to create a new thread.")
+            # print("Too many threads, waiting 1 second to attempt to create a new thread.")
             time.sleep(1)
         # checks if the queue isn't getting too big
         elif len(queue) > max_queue_length:
-            print(
-                "Queue length too big, waiting 1 second to attempt to create a new thread.")
+            # print(
+            #     "Queue length too big, waiting 1 second to attempt to create a new thread.")
             time.sleep(1)
         else:
             threading.Thread(
@@ -178,8 +177,8 @@ def main():
                         order[coin]['sl'] = new_sl
                         store_order('order.json', order)
 
-                        print(
-                            f'updated tp: {round(new_tp, 3)} and sl: {round(new_sl, 3)}')
+                        # print(
+                        #     f'updated tp: {round(new_tp, 3)} and sl: {round(new_sl, 3)}')
 
                     # close trade if tsl is reached or trail option is not enabled
                     elif sell_sl or (sell_tp and not enable_tsl):
@@ -201,7 +200,7 @@ def main():
                                 store_order('sold.json', sold_coins)
 
                                 # Notificar por email
-                                body = f"<p>Se ha vendido {str(coin['volume'])} de {coin} a un precio de {last_price} con un margen del {margin}</p>"
+                                body = f"<p>Se ha vendido {volume} de {coin} a un precio de {last_price} con un margen del {margin}</p>"
                                 email.send(body, "NUEVA VENTA EJECUTADA")
 
                             else:
@@ -221,9 +220,9 @@ def main():
                             store_order('order.json', order)
 
                         except Exception as e:
-                            print(e)
-                            email.send(
-                                "<p>Se ha producido un error en la línea 186 del código " + e + ".</p>", "ERROR EN EL CODIGO")
+                            # print(e)
+                            body = f"<p>Se ha producido un error en el bloque de ventas <br> {e} .</p>"
+                            email.send(body, "ERROR EN EL CODIGO")
 
             else:
                 order = {}
@@ -235,11 +234,11 @@ def main():
                 # check if new coins are listed
                 new_coins = get_new_coins(coin_seen_dict, all_coins_updated)
 
-                print("time to get updated list of coins: ", time.time() - t0)
-                print("current amount of threads: ",
-                      len(threading.enumerate()))
-                print("current queue length: ", len(
-                    queue_of_updated_all_coins))
+                # print("time to get updated list of coins: ", time.time() - t0)
+                # print("current amount of threads: ",
+                #       len(threading.enumerate()))
+                # print("current queue length: ", len(
+                #     queue_of_updated_all_coins))
                 t0 = time.time()
             else:
                 # if no new all_coins_updated is on the queue, new_coins should be empty
@@ -247,15 +246,17 @@ def main():
 
             # the buy block and logic pass
             if len(new_coins) > 0:
-
-                print(f'New coins detected: {new_coins}')
+                
+                ## Avisar por email de que se han descubierto nuevas monedas
+                body = f'<p>New coins detected: {new_coins} . </p>'
+                email.send(body, "NUEVAS MONEDAS DETECTADAS")
 
                 for coin in new_coins:
 
                     # buy if the coin hasn't already been bought
                     if coin['symbol'] not in order and pairing in coin['symbol']:
                         symbol_only = coin['symbol'].split(pairing)[0]
-                        print(f"Preparing to buy {coin['symbol']}")
+                        # print(f"Preparing to buy {coin['symbol']}")
 
                         price = get_price(symbol_only, pairing)
                         volume = convert_volume(coin['symbol'], qty, price)
@@ -281,23 +282,23 @@ def main():
                                 order[coin['symbol']]['tp'] = tp
                                 order[coin['symbol']]['sl'] = sl
 
-                                # Notificar por email
-                                body = f"<p>Se han comprado {volume} de {symbol_only+pairing} a un precio de {price}.</p>"
-                                email.send(body, "NUEVA COMPRA EJECUTADA")
-
                                 # print(
                                 #     f"Order created with {volume} on {coin['symbol']}")
 
                                 store_order('order.json', order)
 
+                                # Notificar por email
+                                body = f"<p>Se han comprado {volume} de {symbol_only} {pairing} a un precio de {price}.</p>"
+                                email.send(body, "NUEVA COMPRA EJECUTADA")
+
                         except Exception as e:
                             # print(e)
                             email.send(
-                                "<p>Se ha producido un error en la línea 268 del código " + e + ".</p>", "ERROR EN EL CÓDIGO")
+                                "<p>Se ha producido una excepción en el bloque de compras " + e + ".</p>", "ERROR EN EL CÓDIGO")
 
                     else:
-                        print(
-                            f"New coin detected, but {coin['symbol']} is currently in portfolio, or {pairing} does not match")
+                        # print(
+                        #     f"New coin detected, but {coin['symbol']} is currently in portfolio, or {pairing} does not match")
                         body = f"<p>New coin detected, but {coin['symbol']} is currently in portfolio, or {pairing} does not match</p>"
                         email.send(body, "NEW COIN DETECTED but not bought")
 
