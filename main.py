@@ -140,8 +140,10 @@ def main():
 
                 for coin in list(order):
 
-                    volume = float(order[coin]['executedQty']) ## CAMBIAR POR executedQty?--> executedQty ES LO QUE REALMENTE SE HA COMPRADO.
+                    ## El volumen para la venta son todas las quantity de las fills menos las comission de las fills.
+                    volume = float(order[coin]['executedQty']) - sum(map(lambda commission: float(commission["commission"]), order[coin]["fills"])) 
                     # store some necesarry trade info for a sell
+                    ## El stored_price es el precio de la compra ejecutada entre el volumen comprado (incluida la comission)
                     stored_price = float(order[coin]['cummulativeQuoteQty']) / volume ## 
                     coin_tp = order[coin]['tp']
                     # coin_sl = order[coin]['sl'] No se utiliza para nada
