@@ -141,8 +141,8 @@ def main():
                 for coin in list(order):
 
                     ## El volumen para la venta son todas las quantity de las fills menos las comission de las fills.
-                    volume = float(order[coin]['executedQty']) - sum(map(lambda commission: float(commission["commission"]), order[coin]["fills"])) 
-                    
+                    # volume = float(order[coin]['executedQty']) - sum(map(lambda commission: float(commission["commission"]), order[coin]["fills"])) 
+                    volume = coin['volume']
                     # store some necesarry trade info for a sell
                     ## El stored_price es el precio de la compra ejecutada entre el volumen comprado (incluida la comission)
                     stored_price = float(order[coin]['cummulativeQuoteQty']) / volume ## 
@@ -196,9 +196,10 @@ def main():
                             # sell for real if test mode is set to false
                             if not test_mode:
                                 sell = create_order(
-                                    coin, f"{volume:.6f}", 'SELL')
+                                    coin, volume, 'SELL')
                                 margin = (
                                     float(last_price) - stored_price) / float(stored_price)*100
+                                sell['volume'] = volume
                                 sold_coins[coin] = sell
                                 store_order('sold.json', sold_coins)
 
