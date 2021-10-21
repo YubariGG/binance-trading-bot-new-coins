@@ -141,8 +141,8 @@ def main():
                 for coin in list(order):
 
                     ## El volumen para la venta son todas las quantity de las fills menos las comission de las fills.
-                    # volume = float(order[coin]['executedQty']) - sum(map(lambda commission: float(commission["commission"]), order[coin]["fills"])) 
-                    volume = coin['volume']
+                    volume = float(order[coin]['executedQty']) - sum(map(lambda commission: float(commission["commission"]), order[coin]["fills"])) 
+                    
                     # store some necesarry trade info for a sell
                     ## El stored_price es el precio de la compra ejecutada entre el volumen comprado (incluida la comission)
                     stored_price = float(order[coin]['cummulativeQuoteQty']) / volume ## 
@@ -186,6 +186,13 @@ def main():
                     # close trade if tsl is reached or trail option is not enabled
                     elif sell_sl or (sell_tp and not enable_tsl):
                         try:
+                            # Test decimales en sell
+                            decimals = client.get_symbol_info(coin)['filters'][2]['stepSize'].index("1") - 1
+                            decimals = 1 if decimals < 0 else decimals
+                            
+                            volume_list = str(volume).split(".")
+                            volume = f"{volume_list[0]}.{volume_list[1][:decimals]}"
+
                             # Save the selling trades:
                             if os.path.isfile('sold.json'):
                                 sold_coins = load_order('sold.json')
@@ -199,7 +206,6 @@ def main():
                                     coin, volume, 'SELL')
                                 margin = (
                                     float(last_price) - stored_price) / float(stored_price)*100
-                                sell['volume'] = volume
                                 sold_coins[coin] = sell
                                 store_order('sold.json', sold_coins)
 
@@ -285,7 +291,7 @@ def main():
                                     symbol_only+pairing, volume, 'BUY')
                                 order[coin['symbol']]['tp'] = tp
                                 order[coin['symbol']]['sl'] = sl
-
+                                # order[coin['symbol']]['volume'] = volume
                                 # print(
                                 #     f"Order created with {volume} on {coin['symbol']}")
 
@@ -316,6 +322,8 @@ def main():
                        "ERROR EN EL CÓDIGO")
 
 
+
 if __name__ == '__main__':
     print('working...')
     main()
+    
