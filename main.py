@@ -44,7 +44,7 @@ def get_new_coins(coin_seen_dict, all_coins_recheck):
     for new_coin in all_coins_recheck:
         if not coin_seen_dict[new_coin['symbol']]:
             result += [new_coin]
-            
+
             # this line ensures the new coin isn't detected again
             coin_seen_dict[new_coin['symbol']] = True
 
@@ -140,12 +140,12 @@ def main():
 
                 for coin in list(order):
 
+                    volume = float(order[coin]['executedQty']) ## CAMBIAR POR executedQty?--> executedQty ES LO QUE REALMENTE SE HA COMPRADO.
                     # store some necesarry trade info for a sell
-                    stored_price = float(order[coin]['price'])
+                    stored_price = float(order[coin]['cummulativeQuoteQty']) / volume ## 
                     coin_tp = order[coin]['tp']
                     # coin_sl = order[coin]['sl'] No se utiliza para nada
-                    volume = order[coin]['volume']
-                    symbol = coin.split(pairing)[0]
+                    symbol = coin.split(pairing)[0] ## pairing es por config
 
                     last_price = get_price(symbol, pairing)
 
@@ -246,7 +246,7 @@ def main():
 
             # the buy block and logic pass
             if len(new_coins) > 0:
-                
+
                 ## Avisar por email de que se han descubierto nuevas monedas
                 body = f'<p>New coins detected: {new_coins} . </p>'
                 email.send(body, "NUEVAS MONEDAS DETECTADAS")
@@ -288,6 +288,7 @@ def main():
                                 store_order('order.json', order)
 
                                 # Notificar por email
+                                # if not isTrading :
                                 body = f"<p>Se han comprado {volume} de {symbol_only} {pairing} a un precio de {price}.</p>"
                                 email.send(body, "NUEVA COMPRA EJECUTADA")
 
