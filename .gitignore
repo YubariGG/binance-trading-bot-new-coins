@@ -1,9 +1,6 @@
-# Ignore creds file
-auth/auth.yml
+# Files to be excluded
+auth.json
+email_credentials.json
 
-# Ignore orders
-order.json
-sold.json
-
-# Ignore pycache
-__pycache__/
+# Not necessary folders:
+__pycache__
