@@ -93,7 +93,6 @@ class Order_handler:
                 type="MARKET",
                 quantity=order["vol2trade"]
             )}
-        print(sell_order)
         sell_order[symbol]["price"] = float(sell_order[symbol]["cummulativeQuoteQty"]) / float(sell_order[symbol]["executedQty"])
         sell_order[symbol]["realQuote"] = sum(map(lambda action: float(action["price"]) * (float(action["qty"]) - float(action["commission"])), sell_order[symbol]["fills"]))
         sell_order[symbol]["margin"] = sell_order[symbol]["realQuote"] - float(order["cummulativeQuoteQty"])
@@ -137,11 +136,11 @@ if __name__ == '__main__':
         config = json.loads(file.read())
 
     # Generating the classes
-    client = Client(api_key=credentials["api_test"], api_secret=credentials["secret_test"], tld=credentials["tld"], testnet=True)
-    orders = Order_handler(client, False, config["pairing"], config["quantity"], config["tp"], config["sl"])
+    client = Client(api_key=credentials["api"], api_secret=credentials["secret"], tld=credentials["tld"])
+    orders = Order_handler(client, config["test"], config["pairing"], config["quantity"], config["tp"], config["sl"])
 
     # Testing functionality
-    test_coin = "TRXUSDT"
+    test_coin = "LAZIOUSDT"
     price = client.get_ticker(symbol=test_coin)["lastPrice"]
     order = orders.buy(test_coin, float(price))
     sell = orders.sell(order[test_coin])
