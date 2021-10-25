@@ -35,8 +35,8 @@ class BinanceHandler:
         self.sleep = [0.1*random.random() for _ in range(5)]
 
         # Classes initialization:
-        # self.client = Client(api_key=credentials["api"], api_secret=credentials["secret"], tld=credentials["tld"])
-        self.client = Client(api_key=credentials["api_test"], api_secret=credentials["secret_test"], tld=credentials["tld"], testnet=True)
+        self.client = Client(api_key=credentials["api"], api_secret=credentials["secret"], tld=credentials["tld"])
+        # self.client = Client(api_key=credentials["api_test"], api_secret=credentials["secret_test"], tld=credentials["tld"], testnet=True)
         self.order_handler = Order_handler(self.client, config["test"], config["pairing"], config["quantity"], config["tp"], config["sl"])
         self.email = Email(email_credentials["email"], email_credentials["password"], email_credentials["targets"])
 
@@ -82,7 +82,7 @@ class BinanceHandler:
                             <li><strong>{symbol}</strong>: bought {float(order['executedQty']):.3f} for {float(order['cummulativeQuoteQty']):.3f} USDT at a price of <strong>{order['price']}</strong> USDT. Including the commision fee we have a volume of <strong>{order['vol2trade']}</strong> {symbol} to trade with.</li>
                         """
                     body += "</ul>"
-                    self.email.send(body, "Estoy probando el nuevo bot.")
+                    self.email.send(body, "Buy order placed")
 
             if len(self.sell_orders) > 0:
                 sell_orders = copy.deepcopy(self.sell_orders)
@@ -100,7 +100,7 @@ class BinanceHandler:
                             <li><strong>{symbol}</strong>: sold <strong>{float(order['realQuote']):.3f}</strong> {symbol} for {order['price']} USDT. A margin of {float(order['margin']):.3f} USDT was made with the current transaction.</li>
                         """
                     body += "</ul>"
-                    self.email.send(body, "Estoy probando el nuevo bot.")
+                    self.email.send(body, "Sell order placed")
 
     def main(self):
         # Writer daemon:
@@ -155,10 +155,4 @@ class BinanceHandler:
 
 if __name__ == "__main__":
     binance = BinanceHandler()
-    # binance.main()
-    all_tickers = binance.client.get_all_tickers()
-    usdt = list(filter(lambda coin: "USDT" in coin["symbol"], all_tickers))
-    print(usdt)
-    info = binance.client.get_symbol_info()
-    order = binance.client.create_order(symbol="TRXUSDT", quantity=0.01, side="BUY", type="MARKET")
-    print(order)
+    binance.main()
