@@ -10,6 +10,9 @@ class Order_handler:
         self.quantity = quantity
         self.tp = tp
         self.sl = sl
+        
+        # Config commision:
+        self.commission = 0.02
 
     def get_decimals(self, coin):
         info = self.client.get_symbol_info(coin)
@@ -47,6 +50,13 @@ class Order_handler:
         return order
 
     def buy_order_test(self, coin, quantity, price):
+        # Emulates buying behavior:
+        self.client.create_test_order(
+            symbol=coin,
+            side="BUY",
+            type="MARKET",
+            quantity=quantity  
+        )
         return {
             "symbol": coin,
             "orderId": random.randint(10000, 99999),
@@ -64,7 +74,7 @@ class Order_handler:
                     {
                         "price": str(price),
                         "qty": quantity,
-                        "commission": str(float(quantity) * 0.01),
+                        "commission": str(float(quantity) * self.commission),
                         "commissionAsset": coin.split(self.pairing)[0],
                         "tradeId": random.randint(10000, 99999)
                     }
@@ -83,8 +93,10 @@ class Order_handler:
                 type="MARKET",
                 quantity=order["vol2trade"]
             )}
+        print(sell_order)
+        sell_order[symbol]["price"] = float(sell_order[symbol]["cummulativeQuoteQty"]) / float(sell_order[symbol]["executedQty"])
         sell_order[symbol]["realQuote"] = sum(map(lambda action: float(action["price"]) * (float(action["qty"]) - float(action["commission"])), sell_order[symbol]["fills"]))
-        sell_order[symbol]["margin"] = sell_order[symbol]["realQuote"] - order["cummulativeQuoteQty"]
+        sell_order[symbol]["margin"] = sell_order[symbol]["realQuote"] - float(order["cummulativeQuoteQty"])
         sell_order[symbol]["write"] = True
         return sell_order
 
@@ -99,11 +111,18 @@ class Order_handler:
                 {
                     "price": price,
                     "qty": order["vol2trade"],
-                    "commission": str(float(order["vol2trade"]) * 0.01),
+                    "commission": str(float(order["vol2trade"]) * self.commission),
                     "commissionAsset": self.pairing,
                     "tradeId": random.randint(10000, 99999)
                 }
             ]
+        # Emulates buying behavior:
+        self.client.create_test_order(
+            symbol=order["symbol"],
+            side="SELL",
+            type="MARKET",
+            quantity=order["vol2trade"]  
+        )
         return order
 
 if __name__ == '__main__':
@@ -118,15 +137,13 @@ if __name__ == '__main__':
         config = json.loads(file.read())
 
     # Generating the classes
-    client = Client(api_key=credentials["api"], api_secret=credentials["secret"], tld=credentials["tld"])
-    orders = Order_handler(client, config["test"], config["pairing"], config["quantity"], config["tp"], config["sl"])
+    client = Client(api_key=credentials["api_test"], api_secret=credentials["secret_test"], tld=credentials["tld"], testnet=True)
+    orders = Order_handler(client, False, config["pairing"], config["quantity"], config["tp"], config["sl"])
 
     # Testing functionality
-    test_coin = "CHESSUSDT"
+    test_coin = "TRXUSDT"
     price = client.get_ticker(symbol=test_coin)["lastPrice"]
     order = orders.buy(test_coin, float(price))
-    print(order)
-    time.sleep(1)
     sell = orders.sell(order[test_coin])
     print(f'Margin: {sell[test_coin]["margin"]:.3f} {config["pairing"]}')
 

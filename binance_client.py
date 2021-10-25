@@ -35,7 +35,8 @@ class BinanceHandler:
         self.sleep = [0.1*random.random() for _ in range(5)]
 
         # Classes initialization:
-        self.client = Client(api_key=credentials["api"], api_secret=credentials["secret"], tld=credentials["tld"])
+        # self.client = Client(api_key=credentials["api"], api_secret=credentials["secret"], tld=credentials["tld"])
+        self.client = Client(api_key=credentials["api_test"], api_secret=credentials["secret_test"], tld=credentials["tld"], testnet=True)
         self.order_handler = Order_handler(self.client, config["test"], config["pairing"], config["quantity"], config["tp"], config["sl"])
         self.email = Email(email_credentials["email"], email_credentials["password"], email_credentials["targets"])
 
@@ -78,7 +79,7 @@ class BinanceHandler:
                     body = "<p>Buy order placed for the following coins:</p><ul>"
                     for symbol, order in orders.items():
                         body += f"""
-                            <li><strong>{symbol}</strong>: bought {float(order['executedQty']):.2f} for {order['cummulativeQuoteQty']} USDT at a price of <strong>{order['price']}</strong> USDT. Including the commision fee we have a volume of <strong>{order['vol2trade']}</strong> {symbol} to trade with.</li>
+                            <li><strong>{symbol}</strong>: bought {float(order['executedQty']):.3f} for {float(order['cummulativeQuoteQty']):.3f} USDT at a price of <strong>{order['price']}</strong> USDT. Including the commision fee we have a volume of <strong>{order['vol2trade']}</strong> {symbol} to trade with.</li>
                         """
                     body += "</ul>"
                     self.email.send(body, "Estoy probando el nuevo bot.")
@@ -93,6 +94,13 @@ class BinanceHandler:
                 if len(sell_orders) > 0:
                     with open("sell_orders.json", "w") as file:
                         file.write(json.dumps(sell_orders))
+                    body = "<p>Sell order placed for the following coins:</p><ul>"
+                    for symbol, order in sell_orders.items():
+                        body += f"""
+                            <li><strong>{symbol}</strong>: sold <strong>{float(order['realQuote']):.3f}</strong> {symbol} for {order['price']} USDT. A margin of {float(order['margin']):.3f} USDT was made with the current transaction.</li>
+                        """
+                    body += "</ul>"
+                    self.email.send(body, "Estoy probando el nuevo bot.")
 
     def main(self):
         # Writer daemon:
@@ -107,9 +115,6 @@ class BinanceHandler:
             watcher.daemon = True
             watcher.start()
 
-        t0 = time.time()
-        del self.coins['CHESSUSDT']
-        del self.coins['LAZIOUSDT']
         # Main logic of the trading algorithm 
         while True:
             try:
@@ -141,17 +146,19 @@ class BinanceHandler:
                             self.sell_orders.update(self.order_handler.sell(order))
                             del self.orders[symbol]
 
-                if time.time() - t0 > 20:
-                    break
-
             except Exception as e:
                 self.email.send(f"<p>Main routine failed due to the following reasons:</p><p>{e}</p>", "ERROR")
                 break
 
-        print(self.sell_orders)
 
 
 
 if __name__ == "__main__":
     binance = BinanceHandler()
-    binance.main()
+    # binance.main()
+    all_tickers = binance.client.get_all_tickers()
+    usdt = list(filter(lambda coin: "USDT" in coin["symbol"], all_tickers))
+    print(usdt)
+    info = binance.client.get_symbol_info()
+    order = binance.client.create_order(symbol="TRXUSDT", quantity=0.01, side="BUY", type="MARKET")
+    print(order)
