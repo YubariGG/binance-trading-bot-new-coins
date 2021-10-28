@@ -35,10 +35,13 @@ class BinanceHandler:
         self.sleep = [0.1*random.random() for _ in range(5)]
 
         # Classes initialization:
-        self.client = Client(api_key=credentials["api"], api_secret=credentials["secret"], tld=credentials["tld"])
+        self.client = Client(
+            api_key=credentials["api"], api_secret=credentials["secret"], tld=credentials["tld"])
         # self.client = Client(api_key=credentials["api_test"], api_secret=credentials["secret_test"], tld=credentials["tld"], testnet=True)
-        self.order_handler = Order_handler(self.client, config["test"], config["pairing"], config["quantity"], config["tp"], config["sl"])
-        self.email = Email(email_credentials["email"], email_credentials["password"], email_credentials["targets"])
+        self.order_handler = Order_handler(
+            self.client, config["test"], config["pairing"], config["quantity"], config["tp"], config["sl"])
+        self.email = Email(
+            email_credentials["email"], email_credentials["password"], email_credentials["targets"])
 
         # Startup routine:
         self.coins = {coin["symbol"]: True for coin in self.client.get_all_tickers()}
@@ -60,7 +63,8 @@ class BinanceHandler:
 
                         # Add the buyable coin to reduce overhead:
                         if self.pairing in coin["symbol"]:
-                            self.new_coins[coin["symbol"]] = float(coin["price"])
+                            self.new_coins[coin["symbol"]
+                                           ] = float(coin["price"])
 
             time.sleep(sleep)
 
@@ -115,7 +119,7 @@ class BinanceHandler:
             watcher.daemon = True
             watcher.start()
 
-        # Main logic of the trading algorithm 
+        # Main logic of the trading algorithm
         while True:
             try:
                 # Buying logic:
@@ -134,25 +138,45 @@ class BinanceHandler:
 
                         # Conditions:
                         updt_tp = current_price > (buyout_price + buyout_price * order["tp"] / 100)
+                        updt_sl = current_price < (buyout_price + buyout_price * order["sl"] / 100)
                         sell_sl = current_price < (buyout_price - buyout_price * self.sl / 100)
                         sell_tp = current_price > (buyout_price + buyout_price * self.tp / 100)
 
                         if updt_tp and self.enable_tsl:
+                            # Update TP:
                             new_tp = current_price + current_price * self.ttp / 100
                             new_tp = (new_tp - buyout_price) / buyout_price * 100
+                            # Update SL:
+                            new_sl = current_price - current_price * self.tsl / 100
+                            new_sl = (new_sl-buyout_price) / buyout_price * 100
+                            # Update order:
                             self.orders[symbol]["tp"] = new_tp
+                            self.orders[symbol]["sl"] = new_sl
 
-                        elif sell_sl or (sell_tp and not self.enable_tsl):
+                        elif (sell_sl or updt_sl) or (sell_tp and not self.enable_tsl):
                             self.sell_orders.update(self.order_handler.sell(order))
                             del self.orders[symbol]
 
             except Exception as e:
-                self.email.send(f"<p>Main routine failed due to the following reasons:</p><p>{e}</p>", "ERROR")
+                self.email.send(
+                    f"<p>Main routine failed due to the following reasons:</p><p>{e}</p>", "ERROR")
                 break
 
 
-
-
 if __name__ == "__main__":
+    import pandas as pd
+    from datetime import datetime
+    import finplot as fplt
+
     binance = BinanceHandler()
-    binance.main()
+    data = binance.client.get_historical_klines(
+        "LAZIOUSDT", "1m", "600 min ago UTC")
+    elements = ["Open time", "Open", "High", "Low", "Close", "Volume", "Close time",
+                "Quote asset volume", "Number of trades", "Taker buy ass vol", "Taker buy quete ass vol", "Ignore"]
+    data = pd.DataFrame(data, columns=elements)
+    for column in data.columns:
+        if data[column].dtype == object:
+            data[column] = data[column].astype(float)
+    print(data)
+    fplt.candlestick_ochl(data[["Open time", "Open", "Close", "High", "Low"]])
+    fplt.show()
