@@ -25,6 +25,7 @@ class Order_handler:
         else:
             return "{:.{}f}".format(quantity, decimals)
 
+    ## Hay que modificar esta funcion para que meta una order de mercado con stop loss y take profit automáticos en funcion del precio de compra.
     def buy(self, coin, price):
         decimals = self.get_decimals(coin)
         quantity = self.correct_volume(self.quantity, decimals, price)
@@ -136,13 +137,13 @@ if __name__ == '__main__':
         config = json.loads(file.read())
 
     # Generating the classes
-    client = Client(api_key=credentials["api"], api_secret=credentials["secret"], tld=credentials["tld"])
+    client = Client(api_key=credentials["apiEMA"], api_secret=credentials["secretEMA"], tld=credentials["tld"])
     orders = Order_handler(client, config["test"], config["pairing"], config["quantity"], config["tp"], config["sl"])
 
     # Testing functionality
-    test_coin = "LAZIOUSDT"
-    price = client.get_ticker(symbol=test_coin)["lastPrice"]
-    order = orders.buy(test_coin, float(price))
-    sell = orders.sell(order[test_coin])
-    print(f'Margin: {sell[test_coin]["margin"]:.3f} {config["pairing"]}')
+    # test_coin = "LAZIOUSDT"
+    # price = client.get_ticker(symbol=test_coin)["lastPrice"]
+    # order = orders.buy(test_coin, float(price))
+    # sell = orders.sell(order[test_coin])
+    # print(f'Margin: {sell[test_coin]["margin"]:.3f} {config["pairing"]}')
 

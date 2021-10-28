@@ -35,7 +35,7 @@ class BinanceHandler:
         self.sleep = [0.1*random.random() for _ in range(5)]
 
         # Classes initialization:
-        self.client = Client(api_key=credentials["api"], api_secret=credentials["secret"], tld=credentials["tld"])
+        self.client = Client(api_key=credentials["apiEMA"], api_secret=credentials["secretEMA"], tld=credentials["tld"])
         # self.client = Client(api_key=credentials["api_test"], api_secret=credentials["secret_test"], tld=credentials["tld"], testnet=True)
         self.order_handler = Order_handler(self.client, config["test"], config["pairing"], config["quantity"], config["tp"], config["sl"])
         self.email = Email(email_credentials["email"], email_credentials["password"], email_credentials["targets"])
@@ -46,7 +46,7 @@ class BinanceHandler:
         self.orders = {}
         self.sell_orders = {}
 
-    def check_new_coins(self, sleep=1):
+    def check_coin_EMAs(self, sleep=1):
         while True:
             # API call:
             current_coins = self.client.get_all_tickers()
@@ -102,16 +102,17 @@ class BinanceHandler:
                     body += "</ul>"
                     self.email.send(body, "Sell order placed")
 
+    # Hilo principal
     def main(self):
-        # Writer daemon:
-        writer = threading.Thread(target=self.write_transactions)
-        writer.daemon = True
-        writer.start()
+        # Writer daemon configuration:
+        # writer = threading.Thread(target=self.write_transactions)
+        # writer.daemon = True
+        # writer.start()
 
         # Scanner daemon configuration:
         for sleep in self.sleep:
             watcher = threading.Thread(
-                target=self.check_new_coins, args=(sleep,))
+                target=self.check_coin_EMAs, args=(sleep,))
             watcher.daemon = True
             watcher.start()
 
@@ -155,4 +156,62 @@ class BinanceHandler:
 
 if __name__ == "__main__":
     binance = BinanceHandler()
-    binance.main()
+    # binance.main()
+    
+    ## Pruebas para hacer los calculos de las EMA. 
+    ## Para ello se puede utilziar un par de pruebas como BTCUSDT--> Poco agresivo o DOGEUSDT como muy agresivo
+    
+    import pandas as pd
+    from datetime import datetime
+    # pip install finplot
+    import finplot as fplt
+    # pip install TA-Lib
+    import talib
+    import numpy as np
+
+    binance = BinanceHandler()
+
+    symbol = 'DOGEUSDT'
+    data = binance.client.get_klines(symbol=symbol, interval=Client.KLINE_INTERVAL_5MINUTE)
+    elements = ["OpenTime", "Open", "High", "Low", "Close", "Volume", "CloseTime",
+                "QuoteAssetVolume", "NumberOfTrades", "TakerBuyAssVol", "TakerBuyQuoteAssVol", "Ignore"]
+    df = pd.DataFrame(data, columns=elements)
+    for column in df.columns:
+        if df[column].dtype == object:
+            df[column] = df[column].astype(float)
+    print(df)
+
+    ## En principio para las EMA se utiliza el dato close, aunque BINANCE da la opcion de utilziar Open, High, Low, Close, hl1, hlc3, ohlc4 
+    # fplt.candlestick_ochl(data[["Open time", "Open", "Close", "High", "Low"]])
+
+    # fplt.show()
+
+    # Get Binance Data into dataframe 
+    # Se puede llamar con varios intervalos.
+    # KLINE_INTERVAL_5MINUT
+    # df.OpenTime = [datetime.fromtimestamp(i/1000) for i in df.OpenTime.values]
+    # df.CloseTime = [datetime.fromtimestamp(i/1000) for i in df.CloseTime.values]
+
+    ## Ejemplos para aprncer a plotear
+    ## ESTA LLAMADA ESTA BASADA EN LA RESPUESTA DESDE BITREX
+    ## https://bittrex.com/Api/v2.0/pub/market/GetTicks?marketName=USDT-BTC&tickInterval=fiveMin
+
+    # Compute RSI after fixing data
+    float_data = [float(x) for x in df.Close.values]
+    np_float_data = np.array(float_data)
+    rsi = talib.RSI(np_float_data, 14)
+    df['rsi'] = rsi
+    df['EMA9'] = talib.EMA(np_float_data, 9)
+    df['EMA6'] = talib.EMA(np_float_data, 6)
+    df['EMA3'] = talib.EMA(np_float_data, 3)
+
+    # Con plot se pueden dibujar lineas, por ejemplo la linea comentada pinta una MA de 25 periodos atras.
+    # put an MA in there
+    # fplt.plot(df['time'], df['close'].rolling(25).mean(), ax=ax, color='#0000ff', legend='ma-25')
+    ax,ax2,ax3 = fplt.create_plot(symbol, rows=3)
+    fplt.plot(df['OpenTime'], df['EMA9'], ax=ax, color='#0000ff', legend='EMA-9')
+    fplt.plot(df['OpenTime'], df['EMA6'], ax=ax, color='#e600ff', legend='EMA-6')
+    fplt.plot(df['OpenTime'], df['EMA3'], ax=ax, color='#ff002b', legend='EMA-3')
+    fplt.plot(df['OpenTime'], df['Close'], ax=ax, color='#e5ff00', legend='Precio Cierre')
+    fplt.show()
+

@@ -5,6 +5,6 @@
     "ttp":2,
     "tsl":2,
     "enable_tsl":true,
-    "test":false,
+    "test":true,
     "quantity":50
 }
