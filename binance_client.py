@@ -6,6 +6,7 @@ import copy
 from binance.client import Client
 from order_handler import Order_handler
 from email_model import Email
+from datetime import datetime
 
 # Loading the credentials:
 with open("auth.json", "r") as file:
@@ -53,6 +54,7 @@ class BinanceHandler:
         while True:
             # API call:
             current_coins = self.client.get_all_tickers()
+            self.current_coins = current_coins
             current_coins_length = len(current_coins)
 
             # Main logic of the thread:
@@ -67,6 +69,23 @@ class BinanceHandler:
                                            ] = float(coin["price"])
 
             time.sleep(sleep)
+
+    def check_current_pool(self):
+        time.sleep(1) # To avoid faster execution than check new coins
+        while True:
+            initial_coins = copy.deepcopy(self.coins)
+            for initial_coin in initial_coins.keys():
+                located_coin = list(filter(lambda coin: coin["symbol"] == initial_coin, self.current_coins))
+                if len(located_coin) > 1:
+                    del self.coins[initial_coin]
+
+
+    def write_current_coin_pool(self):
+        print(datetime.now().strftime("%H:%M"))
+        while True:
+            if datetime.now().strftime("%H:%M") == "00:00":
+                with open("current_coin_pool.json", "w") as file:
+                    file.write(json.dumps(self.coins))
 
     def write_transactions(self):
         while True:
@@ -106,23 +125,18 @@ class BinanceHandler:
                     body += "</ul>"
                     self.email.send(body, "Sell order placed")
 
-    def del_coin(self):
-        while True:
-            time.sleep(10)
-            del self.coins["ADXUSDT"]
-
 
     def main(self):
         # Writer daemon:
         threading.Thread(target=self.write_transactions, daemon=True).start()
+        threading.Thread(target=self.write_current_coin_pool, daemon=True).start()
 
         # Scanner daemon configuration:
         for sleep in self.sleep:
             threading.Thread(target=self.check_new_coins, args=(sleep,), daemon=True).start()
+        threading.Thread(target=self.check_current_pool, daemon=True).start()
 
         # Main logic of the trading algorithm
-        threading.Thread(target=self.del_coin, daemon=True).start()
-
         while True:
             try:
                 # Buying logic:
