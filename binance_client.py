@@ -81,7 +81,6 @@ class BinanceHandler:
 
 
     def write_current_coin_pool(self):
-        print(datetime.now().strftime("%H:%M"))
         while True:
             if datetime.now().strftime("%H:%M") == "00:00":
                 with open("current_coin_pool.json", "w") as file:
