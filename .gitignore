@@ -1,6 +1,8 @@
 # Files to be excluded
 auth.json
 email_credentials.json
+orders.json
+sell_orders.json
 
 # Not necessary folders:
 __pycache__
