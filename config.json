@@ -1,10 +1,10 @@
 {
-    "pairing":"USDT",
-    "tp":3,
-    "sl":3,
-    "ttp":2,
-    "tsl":2,
-    "enable_tsl":true,
-    "test":false,
-    "quantity":50
+    "pairing": "USDT",
+    "tp": 3,
+    "sl": 3,
+    "ttp": 2,
+    "tsl": 2,
+    "enable_tsl": true,
+    "test": true,
+    "quantity": 50
 }

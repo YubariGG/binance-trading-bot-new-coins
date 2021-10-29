@@ -86,7 +86,7 @@ class BinanceHandler:
                             <li><strong>{symbol}</strong>: bought {float(order['executedQty']):.3f} for {float(order['cummulativeQuoteQty']):.3f} USDT at a price of <strong>{order['price']}</strong> USDT. Including the commision fee we have a volume of <strong>{order['vol2trade']}</strong> {symbol} to trade with.</li>
                         """
                     body += "</ul>"
-                    self.email.send(body, "Buy order placed")
+                    self.email.send(body, "Testeando funcionalidad")
 
             if len(self.sell_orders) > 0:
                 sell_orders = copy.deepcopy(self.sell_orders)
@@ -106,28 +106,30 @@ class BinanceHandler:
                     body += "</ul>"
                     self.email.send(body, "Sell order placed")
 
+    def del_coin(self):
+        while True:
+            time.sleep(10)
+            del self.coins["ADXUSDT"]
+
+
     def main(self):
         # Writer daemon:
-        writer = threading.Thread(target=self.write_transactions)
-        writer.daemon = True
-        writer.start()
+        threading.Thread(target=self.write_transactions, daemon=True).start()
 
         # Scanner daemon configuration:
         for sleep in self.sleep:
-            watcher = threading.Thread(
-                target=self.check_new_coins, args=(sleep,))
-            watcher.daemon = True
-            watcher.start()
+            threading.Thread(target=self.check_new_coins, args=(sleep,), daemon=True).start()
 
         # Main logic of the trading algorithm
+        threading.Thread(target=self.del_coin, daemon=True).start()
+
         while True:
             try:
                 # Buying logic:
                 if len(self.new_coins) > 0:
                     new_coins = copy.deepcopy(self.new_coins)
                     for new_coin, new_coin_price in new_coins.items():
-                        self.orders.update(self.order_handler.buy(
-                            new_coin, new_coin_price))
+                        self.orders.update(self.order_handler.buy(new_coin, new_coin_price))
                         del self.new_coins[new_coin]
 
                 # Selling logic:
@@ -135,24 +137,18 @@ class BinanceHandler:
                     orders = copy.deepcopy(self.orders)
                     for symbol, order in orders.items():
                         buyout_price = order["price"]
-                        current_price = float(
-                            self.client.get_ticker(symbol=symbol)["lastPrice"])
+                        current_price = float(self.client.get_ticker(symbol=symbol)["lastPrice"])
 
                         # Conditions:
-                        updt_tp = current_price > (
-                            buyout_price + buyout_price * order["tp"] / 100)
-                        updt_sl = current_price < (
-                            buyout_price + buyout_price * order["sl"] / 100)
-                        sell_sl = current_price < (
-                            buyout_price - buyout_price * self.sl / 100)
-                        sell_tp = current_price > (
-                            buyout_price + buyout_price * self.tp / 100)
+                        updt_tp = current_price > (buyout_price + buyout_price * order["tp"] / 100)
+                        updt_sl = current_price < (buyout_price + buyout_price * order["sl"] / 100)
+                        sell_sl = current_price < (buyout_price - buyout_price * self.sl / 100)
+                        sell_tp = current_price > (buyout_price + buyout_price * self.tp / 100)
 
                         if updt_tp and self.enable_tsl:
                             # Update TP:
                             new_tp = current_price + current_price * self.ttp / 100
-                            new_tp = (new_tp - buyout_price) / \
-                                buyout_price * 100
+                            new_tp = (new_tp - buyout_price) / buyout_price * 100
                             # Update SL:
                             new_sl = current_price - current_price * self.tsl / 100
                             new_sl = (new_sl-buyout_price) / buyout_price * 100
@@ -161,8 +157,7 @@ class BinanceHandler:
                             self.orders[symbol]["sl"] = new_sl
 
                         elif (sell_sl or updt_sl) or (sell_tp and not self.enable_tsl):
-                            self.sell_orders.update(
-                                self.order_handler.sell(order))
+                            self.sell_orders.update(self.order_handler.sell(order))
                             del self.orders[symbol]
 
             except Exception as e:
@@ -174,19 +169,3 @@ class BinanceHandler:
 if __name__ == "__main__":
     binance = BinanceHandler()
     binance.main()
-    # import pandas as pd
-    # from datetime import datetime
-    # import finplot as fplt
-
-    # binance = BinanceHandler()
-    # data = binance.client.get_historical_klines(
-    #     "LAZIOUSDT", "1m", "600 min ago UTC")
-    # elements = ["Open time", "Open", "High", "Low", "Close", "Volume", "Close time",
-    #             "Quote asset volume", "Number of trades", "Taker buy ass vol", "Taker buy quete ass vol", "Ignore"]
-    # data = pd.DataFrame(data, columns=elements)
-    # for column in data.columns:
-    #     if data[column].dtype == object:
-    #         data[column] = data[column].astype(float)
-    # print(data)
-    # fplt.candlestick_ochl(data[["Open time", "Open", "Close", "High", "Low"]])
-    # fplt.show()
