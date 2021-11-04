@@ -147,33 +147,27 @@ def main():
                     ## El stored_price es el precio de la compra ejecutada entre el volumen comprado (incluida la comission)
                     stored_price = float(order[coin]['cummulativeQuoteQty']) / volume ## 
                     coin_tp = order[coin]['tp']
-                    # coin_sl = order[coin]['sl'] No se utiliza para nada
+                    coin_sl = order[coin]['sl']
                     symbol = coin.split(pairing)[0] ## pairing es por config
 
                     last_price = get_price(symbol, pairing)
 
                     # Conditions:
-                    update_tp = float(
-                        last_price) > stored_price + (stored_price*coin_tp / 100)
-                    sell_sl = float(last_price) < stored_price - \
-                        (stored_price*sl / 100)
-                    sell_tp = float(last_price) > stored_price + \
-                        (stored_price*tp / 100)
+                    update_tp = float(last_price) > stored_price + (stored_price*coin_tp / 100)
+                    update_sl = float(last_price) < stored_price + (stored_price * coin_sl / 100) 
+                    sell_sl = float(last_price) < stored_price - (stored_price*sl / 100)
+                    sell_tp = float(last_price) > stored_price + (stored_price*tp / 100)
 
                     # update stop loss and take profit values if threshold is reached
                     if update_tp and enable_tsl:
                         # increase as absolute value for TP
-                        new_tp = float(last_price) + \
-                            (float(last_price)*ttp / 100)
+                        new_tp = float(last_price) + (float(last_price)*ttp / 100)
                         # convert back into % difference from when the coin was bought
-                        new_tp = float(
-                            (new_tp - stored_price) / stored_price*100)
+                        new_tp = float((new_tp - stored_price) / stored_price*100)
 
                         # same deal as above, only applied to trailing SL
-                        new_sl = float(last_price) - \
-                            (float(last_price)*tsl / 100)
-                        new_sl = float(
-                            (new_sl - stored_price) / stored_price*100)
+                        new_sl = float(last_price) - (float(last_price)*tsl / 100)
+                        new_sl = float((new_sl - stored_price) / stored_price*100)
 
                         # new values to be added to the json file
                         order[coin]['tp'] = new_tp
@@ -184,7 +178,7 @@ def main():
                         #     f'updated tp: {round(new_tp, 3)} and sl: {round(new_sl, 3)}')
 
                     # close trade if tsl is reached or trail option is not enabled
-                    elif sell_sl or (sell_tp and not enable_tsl):
+                    elif (sell_sl or update_sl) or (sell_tp and not enable_tsl):
                         try:
                             # Test decimales en sell
                             decimals = client.get_symbol_info(coin)['filters'][2]['stepSize'].index("1") - 1
@@ -211,7 +205,7 @@ def main():
 
                                 # Notificar por email
                                 body = f"<p>Se ha vendido {volume} de {coin} a un precio de {last_price} con un margen del {margin}</p>"
-                                email.send(body, "NUEVA VENTA EJECUTADA")
+                                threading.Thread(target=email.send, args=[body, "NUEVA VENTA EJECUTADA"]).start()
 
                             else:
                                 sold_coins[coin] = {
@@ -230,9 +224,8 @@ def main():
                             store_order('order.json', order)
 
                         except Exception as e:
-                            # print(e)
                             body = f"<p>Se ha producido un error en el bloque de ventas <br> {e} .</p>"
-                            email.send(body, "ERROR EN EL CODIGO")
+                            threading.Thread(target=email.send, args=[body, "ERROR EN EL CODIGO"]).start()
 
             else:
                 order = {}
@@ -259,7 +252,7 @@ def main():
 
                 ## Avisar por email de que se han descubierto nuevas monedas
                 body = f'<p>New coins detected: {new_coins} . </p>'
-                email.send(body, "NUEVAS MONEDAS DETECTADAS")
+                threading.Thread(target=email.send, args=[body, "NUEVAS MONEDAS DETECTADAS"]).start()
 
                 for coin in new_coins:
 
@@ -300,26 +293,22 @@ def main():
                                 # Notificar por email
                                 # if not isTrading :
                                 body = f"<p>Se han comprado {volume} de {symbol_only} {pairing} a un precio de {price}.</p>"
-                                email.send(body, "NUEVA COMPRA EJECUTADA")
+                                threading.Thread(target=email.send, args=[body, "NUEVA COMPRA EJECUTADA"]).start()
 
                         except Exception as e:
-                            # print(e)
                             body = f"<p>Se ha producido una excepción en el bloque de compras <br> {e}.</p>"
-                            email.send(body, "ERROR EN EL CÓDIGO")
+                            threading.Thread(target=email.send, args=[body, "ERROR EN EL CÓDIGO"]).start()
 
                     else:
-                        # print(
-                        #     f"New coin detected, but {coin['symbol']} is currently in portfolio, or {pairing} does not match")
                         body = f"<p>New coin detected, but {coin['symbol']} is currently in portfolio, or {pairing} does not match</p>"
-                        email.send(body, "NEW COIN DETECTED but not bought")
+                        threading.Thread(target=email.send, args=[body, "NEW COIN DETECTED but not bought"])
 
             else:
                 pass
 
         except Exception as e:
-            body = f"<p>No se ha ejecutado el bucle principal{e}</p>"
-            email.send(body,
-                       "ERROR EN EL CÓDIGO")
+            body = f"<p>No se ha ejecutado el bucle principal</p> </p>{e}</p>"
+            email.send(body, "ERROR EN EL CÓDIGO")
 
 
 
