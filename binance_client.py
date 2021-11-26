@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 import json
 import threading
 import time
@@ -32,8 +33,7 @@ class BinanceHandler:
         self.test = config["test"]
 
         # Threading config:
-        self.threads = 5
-        self.sleep = [0.1*random.random() for _ in range(5)]
+        self.sleep = [1 + i*0.05 for i in range(1, 11)]
 
         # Classes initialization:
         self.client = Client(
@@ -52,23 +52,12 @@ class BinanceHandler:
 
     def check_new_coins(self, sleep=1):
         while True:
-            # API call:
-            current_coins = self.client.get_all_tickers()
-            self.current_coins = current_coins
-            current_coins_length = len(current_coins)
-
-            # Main logic of the thread:
-            if current_coins_length > len(self.coins):
-                for coin in current_coins:
-                    if coin["symbol"] not in self.coins:
-                        self.coins[coin["symbol"]] = True
-
-                        # Add the buyable coin to reduce overhead:
-                        if self.pairing in coin["symbol"]:
-                            self.new_coins[coin["symbol"]
-                                           ] = float(coin["price"])
-
-            time.sleep(sleep)
+            try:
+                # API call:
+                self.current_coins = self.client.get_all_tickers() 
+                time.sleep(sleep)
+            except:
+                self.email.send(f"<p>Current pool evaluation failed due to the following reason:</p><p>{e}</p>", "ERROR")
 
     def check_current_pool(self):
         time.sleep(1) # To avoid faster execution than check new coins
@@ -79,106 +68,68 @@ class BinanceHandler:
                 if len(located_coin) > 1:
                     del self.coins[initial_coin]
 
-
-    def write_current_coin_pool(self):
+    def update_status(self):
+        self.email_sent = False
         while True:
-            if datetime.now().strftime("%H:%M") == "00:00":
-                with open("current_coin_pool.json", "w") as file:
-                    file.write(json.dumps(self.coins))
+            if (current_time := datetime.fromtimestamp(time.time()).strftime("%H:%M")) == "00:01": self.email_sent = False
+            if current_time == "00:00" and not self.email_sent:
+                text = f"<p>Current pool length is {len(self.coins)}. Next update tomorrow at 00:00 current time.</p>"
+                self.email.send(text, "Current status")
+                self.email_sent = True
 
-    def write_transactions(self):
-        while True:
-            if len(self.orders) > 0:
-                orders = copy.deepcopy(self.orders)
-                for symbol, order in self.orders.items():
-                    if order["write"]:
-                        order["write"] = False
-                    else:
-                        del orders[symbol]
-                if len(orders) > 0:
-                    with open("orders.json", "w") as file:
-                        file.write(json.dumps(orders))
-                    body = "<p>Buy order placed for the following coins:</p><ul>"
-                    for symbol, order in orders.items():
-                        body += f"""
-                            <li><strong>{symbol}</strong>: bought {float(order['executedQty']):.3f} for {float(order['cummulativeQuoteQty']):.3f} USDT at a price of <strong>{order['price']}</strong> USDT. Including the commision fee we have a volume of <strong>{order['vol2trade']}</strong> {symbol} to trade with.</li>
-                        """
-                    body += "</ul>"
-                    self.email.send(body, "Testeando funcionalidad")
+    def order_email(self, order, coin, text):
+        if text == "BUY":
+            body = f"""
+                        <ul>
+                        <li>
+                            <strong>{coin}</strong>: bought {float(order['cummulativeQuoteQty']):.3f} USDT at a price of <strong>{order['price']}</strong> USDT. Including the commision fee we have a volume of <strong>{order['vol2trade']}</strong> {coin} to trade with.
+                        </li>
+                        </ul>
+                    """
+            self.email.send(body, "Buy order placed")
+        else:
+            body = f"""
+                        <ul>
+                        <li>
+                           <strong>{coin}</strong>: sold <strong>{float(order['realQuote']):.3f}</strong> {coin} at a price of {order['price']} USDT. A margin of {float(order['margin']):.3f} USDT was made with the current transaction. 
+                        </li>
+                        </ul>
+                    """
+            self.email.send(body, "Sell order placed")
 
-            if len(self.sell_orders) > 0:
-                sell_orders = copy.deepcopy(self.sell_orders)
-                for symbol, sell_order in self.sell_orders.items():
-                    if sell_order["write"]:
-                        sell_order["write"] = False
-                    else:
-                        del sell_orders[symbol]
-                if len(sell_orders) > 0:
-                    with open("sell_orders.json", "w") as file:
-                        file.write(json.dumps(sell_orders))
-                    body = "<p>Sell order placed for the following coins:</p><ul>"
-                    for symbol, order in sell_orders.items():
-                        body += f"""
-                            <li><strong>{symbol}</strong>: sold <strong>{float(order['realQuote']):.3f}</strong> {symbol} for {order['price']} USDT. A margin of {float(order['margin']):.3f} USDT was made with the current transaction.</li>
-                        """
-                    body += "</ul>"
-                    self.email.send(body, "Sell order placed")
-
-
-    def main(self):
-        # Writer daemon:
-        threading.Thread(target=self.write_transactions, daemon=True).start()
-        threading.Thread(target=self.write_current_coin_pool, daemon=True).start()
-
+    def main_aggressive(self):        
         # Scanner daemon configuration:
         for sleep in self.sleep:
             threading.Thread(target=self.check_new_coins, args=(sleep,), daemon=True).start()
-        threading.Thread(target=self.check_current_pool, daemon=True).start()
+
+        # Process to remove no longer existing coins:
+        threading.Thread(target=self.check_current_pool, args=[], daemon=True).start()
+
+        # Daemon to update our status
+        threading.Thread(target=self.update_status, args=[], daemon=True).start()
 
         # Main logic of the trading algorithm
+        self.email.send("<p>Started the service using systemctl</p>","Startup")
         while True:
             try:
                 # Buying logic:
-                if len(self.new_coins) > 0:
-                    new_coins = copy.deepcopy(self.new_coins)
-                    for new_coin, new_coin_price in new_coins.items():
-                        self.orders.update(self.order_handler.buy(new_coin, new_coin_price))
-                        del self.new_coins[new_coin]
-
-                # Selling logic:
-                if len(self.orders) > 0:
-                    orders = copy.deepcopy(self.orders)
-                    for symbol, order in orders.items():
-                        buyout_price = order["price"]
-                        current_price = float(self.client.get_ticker(symbol=symbol)["lastPrice"])
-
-                        # Conditions:
-                        updt_tp = current_price > (buyout_price + buyout_price * order["tp"] / 100)
-                        updt_sl = current_price < (buyout_price + buyout_price * order["sl"] / 100)
-                        sell_sl = current_price < (buyout_price - buyout_price * self.sl / 100)
-                        sell_tp = current_price > (buyout_price + buyout_price * self.tp / 100)
-
-                        if updt_tp and self.enable_tsl:
-                            # Update TP:
-                            new_tp = current_price + current_price * self.ttp / 100
-                            new_tp = (new_tp - buyout_price) / buyout_price * 100
-                            # Update SL:
-                            new_sl = current_price - current_price * self.tsl / 100
-                            new_sl = (new_sl-buyout_price) / buyout_price * 100
-                            # Update order:
-                            self.orders[symbol]["tp"] = new_tp
-                            self.orders[symbol]["sl"] = new_sl
-
-                        elif (sell_sl or updt_sl) or (sell_tp and not self.enable_tsl):
-                            self.sell_orders.update(self.order_handler.sell(order))
-                            del self.orders[symbol]
+                if len(self.current_coins) > len(self.coins):
+                    current_coin_pool = copy.deepcopy(self.current_coins)
+                    for coin in current_coin_pool:
+                        # New coin detected:
+                        if coin["symbol"] not in self.coins and self.pairing in coin["symbol"]:
+                            order = self.order_handler.buy(coin["symbol"], float(coin["price"]))
+                            threading.Thread(target=self.order_email, args=[order[coin["symbol"]], coin["symbol"], "BUY"]).start()
+                            time.sleep(0.2)
+                            sell_order = self.order_handler.sell(order[coin["symbol"]])
+                            threading.Thread(target=self.order_email, args=[sell_order[coin["symbol"]], coin["symbol"], "SELL"]).start()
+                            self.coins[coin["symbol"]] = True
 
             except Exception as e:
-                self.email.send(
-                    f"<p>Main routine failed due to the following reasons:</p><p>{e}</p>", "ERROR")
+                self.email.send(f"<p>Main routine failed due to the following reasons:</p><p>{e}</p>", "ERROR")
                 break
 
 
 if __name__ == "__main__":
     binance = BinanceHandler()
-    binance.main()
+    binance.main_aggressive()

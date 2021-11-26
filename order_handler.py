@@ -30,7 +30,6 @@ class Order_handler:
         quantity = self.correct_volume(self.quantity, decimals, price)
         order = {coin:{"decimals":decimals, "volume":quantity}}
         if self.test:
-            print("Running buying in test mode")
             order[coin].update(self.buy_order_test(coin, quantity, price))
         else:
             order[coin].update(self.client.create_order(
@@ -84,7 +83,6 @@ class Order_handler:
     def sell(self, order):
         symbol = order["symbol"]
         if self.test:
-            print("Running selling in test mode")
             sell_order = {symbol:self.sell_order_test(order)}
         else:
             sell_order = {symbol:self.client.create_order(
